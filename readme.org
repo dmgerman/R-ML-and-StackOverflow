@@ -11,16 +11,21 @@
 #+PROPERTY: header-args:R               :results output  :colnames yes
 #+OPTIONS: ^:nil
 
-* Note
+* Survey
 
-Replication package for the paper on R-Help and StackOverflow
+The results of the survey can be found in  LimeSurveyReport-surveyAnswers.pdf 
 
-if you read this, please give me a couple of days before I can upload all the files. they should be all uploaded by Wed May 17, 2017.
+* Databases
+
+They are located in the directory [[./databases][./databases]]
 
 * Schema of the Stack Overflow database: so_r.db
 
 ** Tables
 
+|-----------------+--------------------------------------------------------------------------------------------------------|
+| *table*         | *description*                                                                                          |
+|-----------------+--------------------------------------------------------------------------------------------------------|
 | posttypes       | SO description of what each type of post (posttypeid) means                                            |
 | r_posts         | SO postid of all posts (answers and replies). Its fiels are a subset of stackoverflow.com-Posts.7z     |
 | r_answers       | SO postid of answers to questions                                                                      |
@@ -98,4 +103,37 @@ see [[so/readme.org][so/readme.org]]  for an explanation of how to convert the X
 
 * R-Help
 
+The R-help emails are located in the database: rh.db
+
+There are 3 tables in this database:
+
+| rh_emails | Contains the metadata of each email                                 |
+| rh_erefs  | Contains the references to other emails (references and in-reply-to |
+| rh_events | summary of what each email is: a question, a reply or a comment     |
+
+For privacy reasons, we have removed all the email addresses from the tables. If desired, they can be recreated
+using the scripts we provide. Note that the field *personid* is the unified identifier for a person
+
+
+#+BEGIN_SRC sqlite :db rh.db
+CREATE TABLE rh_mails (
+    messageid text NOT NULL,
+    reply text NOT NULL,
+    personid text,
+    maildate text
+);
+
+#+END_SRC
+
+#+RESULTS:
+
+** rh_events
+
+This table is similar to the so_events table. It has the following schema:
+
+#+BEGIN_SRC sqlite :db rh.db
+CREATE TABLE rh_events(messageid text, me_type char, personid text, month text);
+#+END_SRC
+
+me_type can be 'C' (comment), 'A' (answer), 'Q' (question).
 

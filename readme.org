@@ -17,7 +17,8 @@ The results of the survey can be found in  LimeSurveyReport-surveyAnswers.pdf
 
 * Databases
 
-They are located in the directory [[./databases][./databases]]
+These database are sqlite and they are located in the directory [[./databases][./databases]]
+
 
 * Schema of the Stack Overflow database: so_r.db
 

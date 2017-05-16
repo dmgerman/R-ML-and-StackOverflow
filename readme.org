@@ -1,0 +1,95 @@
+#+STARTUP: showall
+#+STARTUP: lognotestate
+#+TAGS:
+#+SEQ_TODO: TODO STARTED DONE DEFERRED CANCELLED | WAITING DELEGATED APPT
+#+DRAWERS: HIDDEN STATE
+#+TITLE: Replication package for How the R Community Creates and Curates Knowledge: An Extended Study of Stack Overflow and Mailing Lists
+#+CATEGORY: 
+#+PROPERTY: header-args:sql             :engine postgresql  :exports both :cmdline csc370
+#+PROPERTY: header-args:sqlite          :db r_so.db  :colnames yes
+#+PROPERTY: header-args:C++             :results output :flags -std=c++14 -Wall --pedantic -Werror
+#+PROPERTY: header-args:R               :results output  :colnames yes
+#+OPTIONS: ^:nil
+
+* Schema of the Stack Overflow database: so_r.db
+
+** Tables
+
+| posttypes       | SO description of what each type of post (posttypeid) means                                            |
+| r_posts         | SO postid of all posts (answers and replies). Its fiels are a subset of stackoverflow.com-Posts.7z     |
+| r_answers       | SO postid of answers to questions                                                                      |
+| r_questions     | SO postid of questions                                                                                 |
+| r_postmeta      | SO metadata of posts (both questions and answers). Its fields are a subset of SO posts.7z              |
+|-----------------+--------------------------------------------------------------------------------------------------------|
+| r_comments      | SO metadata comments and their data. Its fields are a subset of SO stackoverflow.com-Comments.7z       |
+|-----------------+--------------------------------------------------------------------------------------------------------|
+| r_users         | SO metadata of users involved in SO's r channel. Its fields are a subset of stackoverflow.com-Users.7z |
+| r_events        | SO posts and comments from valid users. Computed. See note below.                                      |
+|-----------------+--------------------------------------------------------------------------------------------------------|
+| so_common_users | These are the userid of persons we identify to be common with R-help                                   |
+
+*** r_events
+
+This table was created as a summary of r_posts and r_comments. It contains all questions, answers and comments
+of valid users. Some users no longer exist in SO but their posts survive. Because we could not associate these
+posts with any user, we decided to not include them in our study.
+
+- If the record is an answer (eventtype = 'A') postid is not null and commentid is null
+- If the record is a question (eventtype = 'Q') postid is not null and commentid is null
+- If the record is a comment (eventtype = 'C') postid is null and commentid is not null
+
+Example:
+
+#+BEGIN_SRC sqlite :exports both
+select * from r_events order by random() limit 10;
+#+END_SRC
+
+#+RESULTS:
+| eventtype |  userid |   postid | commentid | eventdate               |
+|-----------+---------+----------+-----------+-------------------------|
+| C         |  370756 |          |   9134823 | 2011-09-24T13:19:22.693 |
+| C         | 1855677 |          |  11828634 | 2012-02-20T19:24:32.550 |
+| A         |  906490 | 12937147 |           | 2012-10-17T14:52:49.600 |
+| C         | 3732271 |          |  46793017 | 2015-03-27T10:59:25.990 |
+| Q         | 2745266 | 30052203 |           | 2015-05-05T11:52:10.793 |
+| C         |  602276 |          |  49999122 | 2015-06-22T15:57:29.703 |
+| C         | 2664960 |          |  30978872 | 2013-12-19T16:16:53.053 |
+| A         | 4983450 | 38814635 |           | 2016-08-07T13:30:23.930 |
+| Q         | 4312465 | 28196216 |           | 2015-01-28T15:34:48.757 |
+| Q         | 3386991 | 31559725 |           | 2015-07-22T09:53:10.167 |
+
+*** so_common_users
+
+This table links a userid to a personid (our own unique identifier of 
+everybody involved in R-Help and Stackoverflow). 
+
+An important aspect is that some SO users have more than one userid.
+
+Example:
+
+#+BEGIN_SRC sqlite :exports both
+select * from so_common_users limit 10;
+#+END_SRC
+
+#+RESULTS:
+| personid |  userid |
+|----------+---------|
+|    13627 |  918686 |
+|    12787 | 1664449 |
+|    21011 | 1885269 |
+|    29690 | 2744062 |
+|    15459 |  408722 |
+|    29551 | 1993104 |
+|    26331 |  289572 |
+|    11622 | 2033867 |
+|    31468 | 1436673 |
+|    18115 | 2148092 |
+
+** Transcoding the data
+
+see [[so/readme.org][so/readme.org]]  for an explanation of how to convert the XML files to the tables.
+
+
+* R-Help
+
+

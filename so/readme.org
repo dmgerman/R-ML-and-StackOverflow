@@ -1,0 +1,176 @@
+#+STARTUP: showall
+#+STARTUP: lognotestate
+#+TAGS:
+#+SEQ_TODO: TODO STARTED DONE DEFERRED CANCELLED | WAITING DELEGATED APPT
+#+DRAWERS: HIDDEN STATE
+#+TITLE: Transcoding XML files from Stack Overflow dump to add to the database
+#+CATEGORY: 
+#+PROPERTY: header-args:sql             :engine postgresql  :exports both :cmdline csc370
+#+PROPERTY: header-args:sqlite          :db /path/to/db  :colnames yes
+#+PROPERTY: header-args:C++             :results output :flags -std=c++14 -Wall --pedantic -Werror
+#+PROPERTY: header-args:R               :results output  :colnames yes
+#+OPTIONS: ^:nil
+
+* Transcoding XML files from Stack Overflow dump to add to the database
+
+The process we used to import the dumps into the sqlite database was the following:
+
+- For each SO dump file, we transcoded it to a csv file. Each record in the XML file became one in the csv file.
+- Not all the information in the SQL files was transcoded, only the fields that were useful to our study
+
+* Source of files
+
+https://archive.org/download/stackexchange (as of May 2017)
+
+* Used files
+
+| stackoverflow.com-Badges.7z             |         15-Mar-2017 00:02  |   158.2M |
+| stackoverflow.com-Comments.7z           |         15-Mar-2017 00:22  |   3.0G |
+| stackoverflow.com-PostHistory.7z        |         15-Mar-2017 02:54  |   16.9G |
+| stackoverflow.com-PostLinks.7z          |         15-Mar-2017 02:54  |   54.0M |
+| stackoverflow.com-Posts.7z              |         15-Mar-2017 06:25  |   10.0G |
+| stackoverflow.com-Tags.7z               |         15-Mar-2017 06:25  |   673.2K |
+| stackoverflow.com-Users.7z              |         15-Mar-2017 06:27  |   263.1M |
+
+* Scripts used to convert them.
+
+The scripts we used are the following. They were written in scala. 
+
+| comments.scala   | Became comments table                                                         |
+| posts.scala      | Became postmeta table                                                         |
+| posts-tags.scala | Became tags table. It was used to determine which posts belonged to the R tag |
+| users.scala      | Became users table                                                            |
+
+* How to run
+
+- The XML file has 4 bytes headers that were not XML. We used tail to remove them.
+- We uncompressed directly to standard output fed into tail, and into out script
+- the output is a csv file that can be imported into a database
+
+#+BEGIN_SRC sh
+p7zip -c -d stackoverflow.com-Users.7z | tail -c +4 | scala users.scala > uses.csv
+#+END_SRC
+
+* Schema of the tables to create
+
+create now these tables. These will contain *ALL* the information from the dumps.
+
+#+BEGIN_SRC sql
+create table users(
+       userid text,
+       reputation text,
+       creationdate text,
+       displayname text,
+       emailhash text,
+       lastaccessdate text,
+       websiteurl text,
+       location text,
+       age text,
+       views integer,
+       upvotes integer,
+       downvotes integer);
+#+END_SRC
+
+#+BEGIN_SRC sql
+create table postmeta(
+      postid integer,
+      posttypeid integer,
+      parentid integer,
+      
+      acceptedanswerid integer,
+      creationdate    text, 
+      score           integer,
+      
+      viewcount       integer,
+      userid     integer,
+      answercount integer,
+      
+      commentcount integer,
+      FavoriteCount integer
+      
+);
+#+END_SRC
+
+#+BEGIN_SRC sql
+create table posttags(
+      postid integer,
+      tag text);
+#+END_SRC
+
+
+#+BEGIN_SRC sql
+create table posttypes(
+  posttypeid integer,
+  posttype text);
+insert into posttypes  values
+(1, 'Question'),
+(2, 'Answer'),
+(3, 'Wiki'),
+(4, 'TagWikiExcerpt'),
+(5, 'TagWiki'),
+(6, 'ModeratorNomination'),
+(7, 'WikiPlaceholder'),
+(8, 'PrivilegeWiki');
+#+END_SRC
+
+#+BEGIN_SRC sql
+create table comments(
+   commentid integer,
+   postid    integer,
+   score     integer,
+   commentdate text,
+   userid    integer
+);
+#+END_SRC
+
+*
+
+
+* How to import into the database
+
+For each table:
+
+#+BEGIN_SRC sql
+create table nametable ...
+-- yes, i like my CSVs with semicolons, not colons
+.separator ";" 
+.import file.csv nametable
+#+END_SRC
+
+* Delete data after date of interest
+
+- for tables postsmeta and comments, remove tuples after the end of September (after 2010-10-01)
+
+* Remove rows that are not of interest
+
+- The posttags table will give you the postids of posts that are relevant to R (tag = 'r')
+- Create a table r_posts that contains the postid of r_posts
+- Follow the data:
+  - Remove comments that are not related to the r_posts
+  - Remove users that are not related to the r_posts
+
+* Create derived tables
+
+- Create tables for r_questions and r_answers
+- Create table r_events as a union of the three types of tables
+
+#+BEGIN_SRC sql
+create table r_events(
+    eventtype   char,
+    userid      integer,
+    postid      integer,
+    commentid     integer,
+    eventdate   text
+);
+
+insert into r_events select 'A', userid, postid, NULL, creationdate from r_postmeta  where posttypeid = 2 and creationdate < '2016-10';
+
+insert into r_events select 'Q', userid, postid, NULL, creationdate from r_postmeta  where posttypeid = 1 and creationdate < '2016-10';
+
+insert into r_events select 'C', userid, NULL, commentid, commentdate from r_comments  where commentdate < '2016-10';
+
+delete from r_events where userid = '';
+#+END_SRC
+
+And that is all
+

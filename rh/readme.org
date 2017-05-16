@@ -1,0 +1,85 @@
+#+STARTUP: showall
+#+STARTUP: lognotestate
+#+TAGS:
+#+SEQ_TODO: TODO STARTED DONE DEFERRED CANCELLED | WAITING DELEGATED APPT
+#+DRAWERS: HIDDEN STATE
+#+TITLE: Script to conver the email MBOX files into the database
+#+CATEGORY: 
+#+PROPERTY: header-args:sql             :engine postgresql  :exports both :cmdline rpaper
+#+PROPERTY: header-args:sqlite          :db /path/to/db  :colnames yes
+#+PROPERTY: header-args:C++             :results output :flags -std=c++14 -Wall --pedantic -Werror
+#+PROPERTY: header-args:R               :results output  :colnames yes
+#+OPTIONS: ^:nil
+
+* Introduction
+
+We used these two scripts to convert the  MBOX files
+into a database
+
+| extractReferences.pl | Extracts fields referencing each email to other ones |
+| processEmails.pl     | Extracts the main metadata of each email             |
+
+* processEmails.pl
+
+Converts MBOX files to cvs files, with the following schema:
+
+#+BEGIN_SRC sql
+CREATE TABLE rh_mails (
+    messageid text NOT NULL,
+    email text NOT NULL,
+    reply text NOT NULL,
+    fullemail text,
+    personid text,
+    shaemail text,
+    emaildate text
+);
+#+END_SRC
+
+Concatenate the output of all the MBOX files
+This is the way i do it. /tmp/rip.rip contains the files of the MBOX files to convert (e.g. 2016-June.txt). One per line.
+
+#+BEGIN_SRC sh
+cat /tmp/rip.rip| xargs -I@  -n1 ./do.sh '@' && cat *.out > to_import.csv
+#+END_SRC
+
+and these are the contents of do.sh
+
+#+BEGIN_SRC sh
+perl ../processEmails.pl $1 > $N.out
+#+END_SRC
+
+
+* extracReferences.pl
+
+Process as above, but replace do.sh with this  script instead. Import as before.
+
+#+BEGIN_SRC do.sh
+N=`basename $1`
+perl ../extractReferences.pl $1 > $N.out
+#+END_SRC
+
+Import the output into the following table:
+
+#+BEGIN_SRC sqlite
+create table temp_refs(messageid text, 
+          fullmessageid text, 
+          field text, 
+          value text, 
+          ref_message_id text);
+#+END_SRC
+
+Some references, and in-reply-to are invalid (they do not exist in other messages), hence we delete them.
+
+#+BEGIN_SRC sqlite
+delete from temp_refs where messageid not in (select distinct messageid from rh_emails);
+#+END_SRC
+
+then create the corresponding table:
+
+#+BEGIN_SRC 
+create table rh_erefs as select messageid, field as reftype, ref_message_id as  ref_messageid from
+   temp_refs natural join rh_mails where field in ('references','in-reply-to');
+#+END_SRC
+
+#+END_SRC
+

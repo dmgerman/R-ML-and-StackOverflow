@@ -11,6 +11,12 @@
 #+PROPERTY: header-args:R               :results output  :colnames yes
 #+OPTIONS: ^:nil
 
+* Note
+
+Replication package for the paper on R-Help and StackOverflow
+
+if you read this, please give me a couple of days before I can upload all the files. they should be all uploaded by Wed May 17, 2017.
+
 * Schema of the Stack Overflow database: so_r.db
 
 ** Tables

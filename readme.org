@@ -14,11 +14,9 @@
 * Survey
 
 The results of the survey can be found in  LimeSurveyReport-surveyAnswers.pdf 
-
 * Databases
 
 These database are sqlite and they are located in the directory [[./databases][./databases]]
-
 
 * Schema of the Stack Overflow database: so_r.db
 
@@ -137,4 +135,24 @@ CREATE TABLE rh_events(messageid text, me_type char, personid text, month text);
 #+END_SRC
 
 me_type can be 'C' (comment), 'A' (answer), 'Q' (question).
+
+* Phase 1
+
+The database for the first phase (which is the same as the replication package for the MSR paper is located 
+in the directory [[./phase1-sample][./phase1-sample]]. It is a posgresql dump that contains only the messages.
+
+There are two tables: 
+
+| sof_sample | Sample of Stackoverflow discussions |
+| ml_sample | Sample of emails discussions |
+
+Both tables contain, along the metadata of each question, the following fields that correspond to 5 different classifications:
+
+| question_type          | 
+| answer_type           | 
+| flag_type             | 
+| comment_type          | 
+| update_type           | 
+
+If the field is NULL, then the question/answer/comment is not of this type.
 
